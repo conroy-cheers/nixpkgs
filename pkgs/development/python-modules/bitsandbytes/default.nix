@@ -27,8 +27,8 @@ let
     libcurand
     libcusolver # cusolverDn.h
     (lib.getDev libcusparse) # cusparse.h
-    (lib.getLib libcusparse) # cusparse.h
-    (lib.getDev cuda_cudart) # cuda_runtime.h cuda_runtime_api.h
+    (lib.getLib libcusparse)
+    libcusparse.lib
   ];
 
   cuda-native-redist = symlinkJoin {
@@ -76,9 +76,10 @@ buildPythonPackage {
         "cuda_binary_path = PACKAGE_DIR / 'libbitsandbytes_cuda${cudaVersionString}.so'"
   '';
 
+  CUDA_HOME = "${cuda-native-redist}";
+
   nativeBuildInputs = [
     cmake
-    cudaPackages.cuda_nvcc
   ];
 
   build-system = [
