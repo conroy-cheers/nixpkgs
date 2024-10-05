@@ -150,7 +150,7 @@ buildPythonPackage rec {
         'set(PYTHON_SUPPORTED_VERSIONS "${lib.versions.majorMinor python.version}"'
 
     # Pass through PYTHONPATH to worker processes
-    substituteInPlace vllm/vllm/model_executor/models/registry.py \
+    substituteInPlace vllm/model_executor/models/registry.py \
       --replace-fail \
         'subprocess.run(' \
         'subprocess.run(env={"PYTHONPATH": ':'.join(sys.path)}, args=\'
