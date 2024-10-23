@@ -1,5 +1,6 @@
 {
   lib,
+  stdenv,
   buildPythonPackage,
   pythonOlder,
   pythonAtLeast,
@@ -67,7 +68,7 @@ buildPythonPackage rec {
   src =
     let
       pyShortVersion = "cp${builtins.replaceStrings [ "." ] [ "" ] python.pythonVersion}";
-      binary-hash = (import ./binary-hashes.nix)."${pyShortVersion}" or { };
+      platform-binary-hash = (import ./binary-hashes.nix)."${pyShortVersion}-${stdenv.hostPlatform.system}" or { };
     in
     fetchPypi (
       {
@@ -75,9 +76,8 @@ buildPythonPackage rec {
         dist = pyShortVersion;
         python = pyShortVersion;
         abi = pyShortVersion;
-        platform = "manylinux2014_x86_64";
       }
-      // binary-hash
+      // platform-binary-hash
     );
 
   nativeBuildInputs = [
@@ -162,6 +162,7 @@ buildPythonPackage rec {
     changelog = "https://github.com/ray-project/ray/releases/tag/ray-${version}";
     license = lib.licenses.asl20;
     maintainers = with lib.maintainers; [ billhuang ];
-    platforms = [ "x86_64-linux" ];
+    sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
+    platforms = [ "x86_64-linux" "aarch64-linux" ];
   };
 }
