@@ -86,6 +86,9 @@ let
     rev = "v3.1.0";
     hash = "sha256-mpaiCxiYR1WaSSkcEPTzvcREenJWklD+HRdTT5/pD54=";
  };
+
+  # Some packages are not available on all platforms
+  nccl = cudaPackages.nccl or null;
 in
 effectiveStdenv.mkDerivation rec {
   pname = "onnxruntime";
@@ -198,7 +201,7 @@ effectiveStdenv.mkDerivation rec {
     "-Donnxruntime_ENABLE_LTO=ON"
     "-Donnxruntime_USE_FULL_PROTOBUF=OFF"
     (lib.cmakeBool "onnxruntime_USE_CUDA" cudaSupport)
-    (lib.cmakeBool "onnxruntime_USE_NCCL" cudaSupport)
+    (lib.cmakeBool "onnxruntime_USE_NCCL" (cudaSupport && (nccl != null)))
   ] ++ lib.optionals pythonSupport [
     "-Donnxruntime_ENABLE_PYTHON=ON"
   ] ++ lib.optionals cudaSupport [
@@ -242,7 +245,8 @@ effectiveStdenv.mkDerivation rec {
   '';
 
   passthru = {
-    inherit cudaSupport cudaPackages; # for the python module
+    inherit cudaSupport; # for the python module
+    cudaPackages = cudaPackages // { nccl = nccl; }; # for the python module
     protobuf = protobuf_21;
     tests = lib.optionalAttrs pythonSupport {
       python = python3Packages.onnxruntime;
