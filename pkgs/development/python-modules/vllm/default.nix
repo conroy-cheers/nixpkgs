@@ -124,7 +124,7 @@ in
 
 buildPythonPackage rec {
   pname = "vllm";
-  version = "0.6.3.post1-unstable-2024-10-28";
+  version = "0.6.3.dev";
   pyproject = true;
 
   stdenv = if cudaSupport then cudaPackages.backendStdenv else args.stdenv;

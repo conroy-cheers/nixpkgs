@@ -21,6 +21,7 @@ let
   # NOTE: torchvision doesn't use cudnn; torch does!
   #   For this reason it is not included.
   cuda-common-redist = with cudaPackages; [
+    (lib.getDev cuda_cudart) # cuda_runtime.h cuda_runtime_api.h
     (lib.getDev cuda_cccl) # <thrust/*>
     (lib.getDev libcublas) # cublas_v2.h
     (lib.getLib libcublas)
@@ -36,10 +37,8 @@ let
     paths =
       with cudaPackages;
       [
-        (lib.getDev cuda_cudart) # cuda_runtime.h cuda_runtime_api.h
         (lib.getLib cuda_cudart)
         (lib.getStatic cuda_cudart)
-        cuda_nvcc
       ]
       ++ cuda-common-redist;
   };
@@ -76,10 +75,11 @@ buildPythonPackage {
         "cuda_binary_path = PACKAGE_DIR / 'libbitsandbytes_cuda${cudaVersionString}.so'"
   '';
 
-  CUDA_HOME = "${cuda-native-redist}";
-
   nativeBuildInputs = [
     cmake
+  ] ++ lib.optionals cudaSupport [
+    cudaPackages.cuda_nvcc
+    cuda-native-redist
   ];
 
   build-system = [
@@ -89,11 +89,11 @@ buildPythonPackage {
   buildInputs = lib.optionals cudaSupport [ cuda-redist ];
 
   cmakeFlags = [
-    (lib.cmakeFeature "-DCOMPUTE_BACKEND" (if cudaSupport then "cuda" else "cpu"))
-  ];
-  NVCC_PREPEND_FLAGS = lib.optionals cudaSupport [
-    "-I${cuda-native-redist}/include"
-    "-L${cuda-native-redist}/lib"
+    (lib.cmakeFeature "COMPUTE_BACKEND" (if cudaSupport then "cuda" else "cpu"))
+  ] ++ lib.optionals cudaSupport [
+    (lib.cmakeFeature "COMPUTE_CAPABILITY" "${cudaPackages.cudaFlags.cmakeCudaArchitecturesString}")
+    (lib.cmakeFeature "CMAKE_CUDA_ARCHITECTURES" "${cudaPackages.cudaFlags.cmakeCudaArchitecturesString}")
+    (lib.cmakeFeature "CUDAToolkit_ROOT" "${cuda-native-redist}")
   ];
 
   preBuild = ''
