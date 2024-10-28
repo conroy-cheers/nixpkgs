@@ -1,6 +1,6 @@
 {
   lib,
-  ccacheStdenv,
+  stdenv,
   python,
   buildPythonPackage,
   pythonRelaxDepsHook,
@@ -65,7 +65,6 @@
 
 let
   shouldUsePkg = pkg: if pkg != null && lib.meta.availableOn stdenv.hostPlatform pkg then pkg else null;
-  stdenv = ccacheStdenv;
   
   cutlass = fetchFromGitHub {
     owner = "NVIDIA";
