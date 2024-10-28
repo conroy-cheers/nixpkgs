@@ -51,6 +51,7 @@
   numactl,
   tokenizers,
   oneDNN,
+  bitsandbytes,
 
   config,
 
@@ -124,16 +125,16 @@ in
 
 buildPythonPackage rec {
   pname = "vllm";
-  version = "0.6.3.post1";
+  version = "0.6.3.post1-unstable-2024-10-28";
   pyproject = true;
 
   stdenv = if cudaSupport then cudaPackages.backendStdenv else args.stdenv;
 
   src = fetchFromGitHub {
-    owner = "vllm-project";
+    owner = "conroy-cheers";
     repo = pname;
-    rev = "refs/tags/v${version}";
-    hash = "sha256-VHFU8EzkYRTZwm6cRmA5+YAm3NWkrYjX9ZSXUZNnkx0=";
+    rev = "da79e3e55f1eb85d3c194cbdee8d69e5c1da6364";
+    hash = "sha256-6VrRpJMDNR2z+ASxEAOOIaAckLn1cRamJvny7kMNH9c=";
   };
 
   patches = [
@@ -232,6 +233,7 @@ buildPythonPackage rec {
       partial-json-parser
       compressed-tensors
       mistral-common
+      bitsandbytes
       torch
       torchvision
       transformers
