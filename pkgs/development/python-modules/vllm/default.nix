@@ -124,15 +124,15 @@ in
 
 buildPythonPackage rec {
   pname = "vllm";
-  version = "0.6.3.dev";
+  version = "0.6.4-dev";
   pyproject = true;
 
   stdenv = if cudaSupport then cudaPackages.backendStdenv else args.stdenv;
 
   src = fetchFromGitHub {
-    owner = "conroy-cheers";
-    repo = pname;
-    rev = "da79e3e55f1eb85d3c194cbdee8d69e5c1da6364";
+    owner = "vllm-project";
+    repo = "vllm";
+    rev = "c93ecc43a3f2cd94d6e7eb57c883a3ca27d4af7a";
     hash = "sha256-6VrRpJMDNR2z+ASxEAOOIaAckLn1cRamJvny7kMNH9c=";
   };
 
