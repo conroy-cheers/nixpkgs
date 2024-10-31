@@ -35,10 +35,8 @@
   removeReferencesTo,
 
   # Build inputs
+  darwin,
   numactl,
-  Accelerate,
-  CoreServices,
-  libobjc,
 
   # Propagated build inputs
   astunparse,
@@ -55,6 +53,17 @@
   # ROCm build and `torch.compile` requires `triton`
   tritonSupport ? (!stdenv.isDarwin),
   triton,
+
+  # TODO: 1. callPackage needs to learn to distinguish between the task
+  #          of "asking for an attribute from the parent scope" and
+  #          the task of "exposing a formal parameter in .override".
+  # TODO: 2. We should probably abandon attributes such as `torchWithCuda` (etc.)
+  #          as they routinely end up consuming the wrong arguments\
+  #          (dependencies without cuda support).
+  #          Instead we should rely on overlays and nixpkgsFun.
+  # (@SomeoneSerge)
+  _tritonEffective ? if cudaSupport then triton-cuda else triton,
+  triton-cuda,
 
   # Unit tests
   hypothesis,
@@ -94,6 +103,8 @@ let
     trivial
     ;
   inherit (cudaPackages) cudaFlags cudnn nccl;
+
+  triton = throw "python3Packages.torch: use _tritonEffective instead of triton to avoid divergence";
 
   rocmPackages = rocmPackages_5;
 
@@ -242,6 +253,7 @@ buildPythonPackage rec {
       # Allow setting PYTHON_LIB_REL_PATH with an environment variable.
       # https://github.com/pytorch/pytorch/pull/128419
       ./passthrough-python-lib-rel-path.patch
+      ./0001-cmake.py-propagate-cmakeFlags-from-environment.patch
     ]
     ++ lib.optionals cudaSupport [ ./fix-cmake-cuda-toolkit.patch ]
     ++ lib.optionals (stdenv.isDarwin && stdenv.isx86_64) [
@@ -259,7 +271,18 @@ buildPythonPackage rec {
     ];
 
   postPatch =
-    lib.optionalString rocmSupport ''
+    ''
+      substituteInPlace cmake/public/cuda.cmake \
+        --replace-fail \
+          'message(FATAL_ERROR "Found two conflicting CUDA' \
+          'message(WARNING "Found two conflicting CUDA' \
+        --replace-warn \
+          "set(CUDAToolkit_ROOT" \
+          "# Upstream: set(CUDAToolkit_ROOT"
+      substituteInPlace third_party/gloo/cmake/Cuda.cmake \
+        --replace-warn "find_package(CUDAToolkit 7.0" "find_package(CUDAToolkit"
+    ''
+    + lib.optionalString rocmSupport ''
       # https://github.com/facebookincubator/gloo/pull/297
       substituteInPlace third_party/gloo/cmake/Hipify.cmake \
         --replace "\''${HIPIFY_COMMAND}" "python \''${HIPIFY_COMMAND}"
@@ -351,6 +374,17 @@ buildPythonPackage rec {
 
   # NB technical debt: building without NNPACK as workaround for missing `six`
   USE_NNPACK = 0;
+
+  cmakeFlags =
+    [
+      # (lib.cmakeBool "CMAKE_FIND_DEBUG_MODE" true)
+      (lib.cmakeFeature "CUDAToolkit_VERSION" cudaPackages.cudaVersion)
+    ]
+    ++ lib.optionals cudaSupport [
+      # Unbreaks version discovery in enable_language(CUDA) when wrapping nvcc with ccache
+      # Cf. https://gitlab.kitware.com/cmake/cmake/-/issues/26363
+      (lib.cmakeFeature "CMAKE_CUDA_COMPILER_TOOLKIT_VERSION" cudaPackages.cudaVersion)
+    ];
 
   preBuild = ''
     export MAX_JOBS=$NIX_BUILD_CORES
@@ -495,13 +529,13 @@ buildPythonPackage rec {
     )
     ++ lib.optionals rocmSupport [ rocmPackages.llvm.openmp ]
     ++ lib.optionals (cudaSupport || rocmSupport) [ effectiveMagma ]
-    ++ lib.optionals stdenv.isLinux [ numactl ]
-    ++ lib.optionals stdenv.isDarwin [
-      Accelerate
-      CoreServices
-      libobjc
+    ++ lib.optionals stdenv.hostPlatform.isLinux [ numactl ]
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [
+      darwin.apple_sdk.frameworks.Accelerate
+      darwin.apple_sdk.frameworks.CoreServices
+      darwin.libobjc
     ]
-    ++ lib.optionals tritonSupport [ triton ]
+    ++ lib.optionals tritonSupport [ _tritonEffective ]
     ++ lib.optionals MPISupport [ mpi ]
     ++ lib.optionals rocmSupport [ rocmtoolkit_joined ];
 
@@ -529,7 +563,7 @@ buildPythonPackage rec {
 
     # torch/csrc requires `pybind11` at runtime
     pybind11
-  ] ++ lib.optionals tritonSupport [ triton ];
+  ] ++ lib.optionals tritonSupport [ _tritonEffective ];
 
   propagatedCxxBuildInputs =
     [ ] ++ lib.optionals MPISupport [ mpi ] ++ lib.optionals rocmSupport [ rocmtoolkit_joined ];
@@ -665,7 +699,9 @@ buildPythonPackage rec {
       thoughtpolice
       tscholak
     ]; # tscholak esp. for darwin-related builds
-    platforms = with lib.platforms; linux ++ lib.optionals (!cudaSupport && !rocmSupport) darwin;
+    platforms =
+      lib.platforms.linux
+      ++ lib.optionals (!cudaSupport && !rocmSupport) lib.platforms.darwin;
     broken = builtins.any trivial.id (builtins.attrValues brokenConditions);
   };
 }
