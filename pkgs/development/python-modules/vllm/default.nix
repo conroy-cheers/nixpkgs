@@ -124,7 +124,7 @@ in
 
 buildPythonPackage rec {
   pname = "vllm";
-  version = "0.6.4-dev";
+  version = "0.6.3.dev";
   pyproject = true;
 
   stdenv = if cudaSupport then cudaPackages.backendStdenv else args.stdenv;
@@ -132,8 +132,8 @@ buildPythonPackage rec {
   src = fetchFromGitHub {
     owner = "vllm-project";
     repo = "vllm";
-    rev = "c93ecc43a3f2cd94d6e7eb57c883a3ca27d4af7a";
-    hash = "sha256-6VrRpJMDNR2z+ASxEAOOIaAckLn1cRamJvny7kMNH9c=";
+    rev = "21063c11c7d340dbb01460e22d98d3619737cd4d";
+    hash = "sha256-uQyh2A9Qc/lzyHsqfgm7zttRkw/NWiYLOmfbiXIEhFg=";
   };
 
   patches = [
@@ -158,8 +158,8 @@ buildPythonPackage rec {
     # Relax torch dependency manually because the nonstandard requirements format
     # is not caught by pythonRelaxDeps
     substituteInPlace requirements*.txt pyproject.toml \
-      --replace-warn 'torch==2.4.0' 'torch==${lib.getVersion torch}' \
-      --replace-warn 'torch == 2.4.0' 'torch == ${lib.getVersion torch}'
+      --replace-warn 'torch==2.5.1' 'torch==${lib.getVersion torch}' \
+      --replace-warn 'torch == 2.5.1' 'torch == ${lib.getVersion torch}'
   '' + lib.optionalString (nccl == null) ''
     # On platforms where NCCL is not supported (e.g. Jetson), substitute Gloo (provided by Torch)
     substituteInPlace vllm/distributed/parallel_state.py \
