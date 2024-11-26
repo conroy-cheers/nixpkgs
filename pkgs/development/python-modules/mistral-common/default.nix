@@ -1,6 +1,7 @@
 {
   lib,
   buildPythonPackage,
+  pythonRelaxDepsHook,
   fetchPypi,
   poetry-core,
   pytestCheckHook,
@@ -25,7 +26,17 @@ buildPythonPackage rec {
     hash = "sha256-EQ4bk3rumf3PPO/GtOkk5+Iv9EUkYJD+khUFEkXKpZw=";
   };
 
-  build-system = [ poetry-core ];
+  build-system = [
+    poetry-core
+  ];
+
+  nativeBuildInputs = [
+    pythonRelaxDepsHook
+  ];
+
+  pythonRelaxDeps = [
+    "pillow"
+  ];
 
   dependencies = [
     pydantic
