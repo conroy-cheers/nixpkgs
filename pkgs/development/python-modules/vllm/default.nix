@@ -5,6 +5,7 @@
   buildPythonPackage,
   pythonRelaxDepsHook,
   fetchFromGitHub,
+  fetchpatch,
   symlinkJoin,
   autoAddDriverRunpath,
 
@@ -75,22 +76,26 @@ let
 
   vllm-flash-attn = stdenv.mkDerivation {
     pname = "vllm-flash-attn";
-    version = "2.6.2-unstable-2024-09-21";
+    version = "2.6.2-unstable-2024-10-26";
 
     src = fetchFromGitHub {
       owner = "vllm-project";
       repo = "flash-attention";
-      rev = "013f0c4fc47e6574060879d9734c1df8c5c273bd";
-      sha256 = "sha256-5wYPIO9QgqpBqoL/L6dJKaSllgwldu9OeNRutDgcXvs=";
+      rev = "5259c586c403a4e4d8bf69973c159b40cc346fb9";
+      sha256 = "sha256-6/pDTyP1wy9PSmWtKbmf5EBfdz6eLabhpoA06rfvp+U=";
+      fetchSubmodules = true;
+      leaveDotGit = true;
     };
 
-    dontConfigure = true;
+    patches = [
+      # CUDA arch 8.7 support for Orin devices
+      (fetchpatch {
+        url = "https://github.com/vllm-project/flash-attention/commit/0aedbfea9b2c39b61a8fa994af1c42a88a2113e4.patch";
+        hash = "sha256-FUl4g0WA3Qz4kBam7aSsAo7hIfPZNy6xm3l4qITdNXg=";
+      })
+    ];
 
-    # vllm-flash-attn normally relies on `git submodule update` to fetch cutlass
-    buildPhase = ''
-      rm -rf csrc/cutlass
-      ln -sf ${cutlass} csrc/cutlass
-    '';
+    dontConfigure = true;
 
     installPhase = ''
       cp -rva . $out
@@ -124,7 +129,7 @@ in
 
 buildPythonPackage rec {
   pname = "vllm";
-  version = "0.6.3.dev";
+  version = "0.6.4.dev";
   pyproject = true;
 
   stdenv = if cudaSupport then cudaPackages.backendStdenv else args.stdenv;
@@ -132,8 +137,8 @@ buildPythonPackage rec {
   src = fetchFromGitHub {
     owner = "vllm-project";
     repo = "vllm";
-    rev = "21063c11c7d340dbb01460e22d98d3619737cd4d";
-    hash = "sha256-uQyh2A9Qc/lzyHsqfgm7zttRkw/NWiYLOmfbiXIEhFg=";
+    rev = "2f0a0a17a47436fe9709462dfee3bb9d2f91e0a0";
+    hash = "sha256-MmsEKtXn0qqPGpBkMV5olo1flqThUAZPLSp9K4RXcMw=";
   };
 
   patches = [
