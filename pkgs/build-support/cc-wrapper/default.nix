@@ -365,6 +365,8 @@ let
       cc.hardeningUnsupportedFlagsByTargetPlatform targetPlatform
     else
       (cc.hardeningUnsupportedFlags or [ ]);
+  canProbeGccHardeningFlags =
+    !nativeTools && isGNU && targetPlatform.isAarch32 && cc.system == buildPlatform.system;
 
   darwinPlatformForCC = optionalString targetPlatform.isDarwin (
     if (targetPlatform.darwinPlatform == "macos" && isGNU) then
@@ -913,6 +915,35 @@ stdenvNoCC.mkDerivation {
     ''
     + optionalString targetPlatform.isMicroBlaze ''
       hardening_unsupported_flags+=" stackprotector"
+    ''
+
+    # Some 32-bit ARM GCC backends do not support specific hardening flags for
+    # every selected CPU or mode.
+    + optionalString canProbeGccHardeningFlags ''
+      hardeningProbeCc="${cc}/bin/${targetPrefix}gcc${exeSuffix}"
+      if [ -x "$hardeningProbeCc" ]; then
+        hardeningProbeSource="
+          extern int external(int);
+          extern void escape(void *);
+          int probe_frame(int x) {
+            char frame[256];
+            frame[0] = x;
+            escape(frame);
+            return frame[0];
+          }
+          int probe_tail(int x) { return external(x); }
+        "
+
+        if ! "$hardeningProbeCc" ${escapeShellArgs machineFlags} \
+            -x c -c -O2 -fstack-clash-protection -o /dev/null - <<< "$hardeningProbeSource" >/dev/null 2>&1; then
+          hardening_unsupported_flags+=" stackclashprotection"
+        fi
+
+        if ! "$hardeningProbeCc" ${escapeShellArgs machineFlags} \
+            -x c -c -O2 -fzero-call-used-regs=used-gpr -o /dev/null - <<< "$hardeningProbeSource" >/dev/null 2>&1; then
+          hardening_unsupported_flags+=" zerocallusedregs"
+        fi
+      fi
     ''
 
     + optionalString (libc != null && targetPlatform.isAvr && !isArocc) ''
